@@ -170,6 +170,50 @@ static char kAFResponseSerializerKey;
     }
 }
 
+- (AFHTTPRequestOperation *)cacheImageWithURLRequest:(NSURLRequest *)urlRequest
+                       success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, UIImage *image))success
+                       failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error))failure
+                      progress:(void (^)(NSUInteger bytesRead, long long totalBytesRead, long long totalBytesExpectedToRead))progress
+{
+    UIImage *cachedImage = [[[self class] af_sharedImageCache] cachedImageForRequest:urlRequest];
+    if (cachedImage) {
+        if (success) {
+            success(nil, nil, cachedImage);
+        }
+        return nil;
+    } else {
+        __weak __typeof(self)weakSelf = self;
+        AFHTTPRequestOperation *imageRequestOperation = [[AFHTTPRequestOperation alloc] initWithRequest:urlRequest];
+        imageRequestOperation.responseSerializer = self.imageResponseSerializer;
+        [imageRequestOperation setDownloadProgressBlock:^(NSUInteger bytesRead, long long totalBytesRead, long long totalBytesExpectedToRead) {
+            if (progress) {
+                progress(bytesRead,totalBytesRead,totalBytesExpectedToRead);
+            }
+        }];
+        [imageRequestOperation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
+            __strong __typeof(weakSelf)strongSelf = weakSelf;
+            if ([[urlRequest URL] isEqual:[operation.request URL]]) {
+                if (success) {
+                    success(urlRequest, operation.response, responseObject);
+                }
+            } else {
+
+            }
+
+            [[[strongSelf class] af_sharedImageCache] cacheImage:responseObject forRequest:urlRequest];
+        } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+            if ([[urlRequest URL] isEqual:[operation.response URL]]) {
+                if (failure) {
+                    failure(urlRequest, operation.response, error);
+                }
+            }
+        }];
+
+        [[[self class] af_sharedImageRequestOperationQueue] addOperation:imageRequestOperation];
+        return imageRequestOperation;
+    }
+}
+
 - (void)cancelImageRequestOperation {
     [self.af_imageRequestOperation cancel];
     self.af_imageRequestOperation = nil;

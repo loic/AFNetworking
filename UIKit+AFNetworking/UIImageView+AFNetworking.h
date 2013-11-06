@@ -94,6 +94,15 @@
                        progress:(void (^)(NSUInteger bytesRead, long long totalBytesRead, long long totalBytesExpectedToRead))progress;
 
 /**
+ Asynchronously cache an image from the specified URL request.
+
+ */
+- (void)cacheImageWithURLRequest:(NSURLRequest *)urlRequest
+                       success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, UIImage *image))success
+                       failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error))failure
+                       progress:(void (^)(NSUInteger bytesRead, long long totalBytesRead, long long totalBytesExpectedToRead))progress;
+
+/**
  Cancels any executing image operation for the receiver, if one exists.
  */
 - (void)cancelImageRequestOperation;
